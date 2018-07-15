@@ -2,7 +2,7 @@
 title: 'WZQTSX'
 description: 'Life'
 keyword: '王清山'
-url: '' # your host
+url: '759803573.github.io' # your host
 
 # if you don't need baseurl, you should leave this value blank.
 baseurl: ''
@@ -20,7 +20,7 @@ footer:
 author: '王清山'
 nickname: '王小翁'
 bio: ''
-avatar: ''
+avatar: '/assets/img/avatar.jpg'
 
 # Search
 search: true
@@ -49,9 +49,8 @@ postPatterns: 'circuitBoard'
 # SNS settings 配置社交网站
 # url: email, weibo, zhihu, twitter, instagram, juejin, github, douban, facebook, dribble, uicn, jianshu, medium, linkedin
 sns:
-  weibo: ''
-  juejin: ''
-  instagram: ''
+  email: 'mailto:sddbdw@163.com'
+  weibo: '//weibo.com/u/2719836912'
   github: '//github.com/759803573'
 
 # Tags 设置标签
