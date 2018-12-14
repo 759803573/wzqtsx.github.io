@@ -193,18 +193,5 @@ $ aws s3 ls s3://logs-k8s/dev-k8s/20181213/kube-system/calico-node-fm594/calico-
 
 <hr />
 
-## 开发
-### 启动流程
-### route
-### 插件开发
-#### helper
-#### 配置
-#### 日志
-
-### 对比
-#### flume
-#### logstash
-#### fluentd
-
 ### 附件
 * 脑图![Fluentd Plugin.png](/assets/img/fluentd/brain_map.png)
