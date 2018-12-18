@@ -1,5 +1,6 @@
 ---
 layout: post
+comments: true
 title: 'Hello Fluentd'
 date: 2018-12-14
 author: Calvin Wang
