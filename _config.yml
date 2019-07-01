@@ -79,4 +79,6 @@ RSS: true
 permalink: /:year/:month/:day/:title.html
 
 # Plugins
-plugins: [jekyll-paginate]
+plugins: 
+  - jekyll-paginate
+  - jekyll-avatar
