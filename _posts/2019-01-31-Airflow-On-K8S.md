@@ -165,7 +165,3 @@ deploy_dev:
   only:
     - dev
 ```
-
-`​`` html
-<a href="#">Hello world</a>
-`​``
