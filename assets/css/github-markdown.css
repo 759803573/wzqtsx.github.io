@@ -634,3 +634,7 @@ li p:nth-child(2) {
 .markdown-body hr {
   border-bottom-color: #eee;
 }
+
+.markdown-body .highlighter-rouge {
+  color: #80251c
+}
