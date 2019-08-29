@@ -50,6 +50,7 @@ tags: airflow task state
   * 其他异常, 不存在retry次数:    `FAILED`
 
 
+## 稍微多说点
 ## 依赖管理(airflow.ti_deps)(源码部分有修改)
 ### class airflow.ti_deps.deps.BaseTIDep
 上下文依赖的抽象类. 定义了依赖检查流程.
@@ -167,7 +168,7 @@ ALL_SUCCESS|upstream_failed !=0 or failed != 0 | UPSTREAM_FAILED |
 |upstream_failed =0 and failed = 0 and skipped !=0| SKIPPED |
 ALL_FAILED|successes !=0 or skipped !=0 | SKIPPED |
 ONE_SUCCESS | upstream_done ==True and success = 0| SKIPPED |
-ONE_FAILED | upstream_done != True and failed ==0 and upstream_failed ==0) | SKIPPED 
+ONE_FAILED | upstream_done != True and failed ==0 and upstream_failed ==0 | SKIPPED 
 NONE_FAILED | upstream_failed !=0 or failed !=0 | UPSTREAM_FAILED | 1.10.2增加
 | skipped >= upstream | SKIPPED |
 NONE_SKIPPED | skipped!=0 | SKIPPED | 1.10.3增加
@@ -175,7 +176,7 @@ NONE_SKIPPED | skipped!=0 | SKIPPED | 1.10.3增加
 * 其他dag都是见名知意的, 可以翻翻看.
 
 ### class airflow.ti_deps.DepContext
-一个Context基类, 用来维护在TI Context 中需要评估的依赖项(deps). 并配置其行为.
+一个Context基类, 用来维护在TI Context 中需要评估的依赖项(deps), 和配置其行为.
 ```python
 class DepContext(object):
     def __init__(
@@ -241,19 +242,11 @@ class SequentialExecutor(BaseExecutor):
 
     def sync(self):
         for key, command in self.commands_to_run:
-            self.log.info("Executing command: %s", command)
-
-            try:
-                subprocess.check_call(command, close_fds=True)
-                self.change_state(key, State.SUCCESS)
-            except subprocess.CalledProcessError as e:
-                self.change_state(key, State.FAILED)
-                self.log.error("Failed to execute task %s.", str(e))
+            subprocess.check_call(command, close_fds=True)
         self.commands_to_run = []
 
     def end(self):
         self.heartbeat()
 ```
 
-
-## JOB
+## 选择下想了解的内容
