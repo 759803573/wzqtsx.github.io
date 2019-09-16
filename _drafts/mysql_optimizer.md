@@ -119,8 +119,10 @@ sql
 SHOW PROFILES;
 SHOW PROFILE FOR QUERY <QueryID>
 ```
+
+
 #### OPTIMIZER_TRACE
-* 使用：查`实际`看执行流程，分析、验证优化思路
+* 使用：查`实际`执行流程，分析、验证优化思路
 ```sql
 SET OPTIMIZER_TRACE="enabled=on";
 SET OPTIMIZER_TRACE_MAX_MEM_SIZE=1000000; 
@@ -128,15 +130,15 @@ sql
 SELECT * FROM INFORMATION_SCHEMA.OPTIMIZER_TRACE;
 ```
 
-### Query Optimizer Hints
+### Query Optimizer Hints:
 * SQL_NO_CACHE: 不适用缓存
 * SQL_BUFFER_RESULT: 强制将结果先缓存至临时表, 再返回客户端.(在将大量数据发送至客户端时尽可能快的释放表锁)
 
-### range(均适用于btree, memory 限制不同)
+### range(以下均适用于btree, hash 限制不同):
 mysql中所有的条件最终都会被优化为`range`, 等值是range的一种特列.
 比如: `a=2` 会被解析为 `2 <= a <= 2`
 
-#### Range Access Method for Single/Many-Part Indexes
+#### Range Access Method for Single/Many-Part Indexes:
 限制: 
 * 几乎支持所有操作符, 其中like要求不以统配符作为起始字符, 即: 符合` like 'abc%'` 不符合 `like '%bc%'`
 * 操作符两侧为index key(满足最左匹配) 和 常量
@@ -203,7 +205,7 @@ WHERE
   OR 
 (FALSE)
 
---- 1. 删除非必要TRUE/FALSE
+--- 2. 删除非必要TRUE/FALSE
 (keyword < 'DZ') 
   OR 
 (keyword < 'Alo7' ) 
@@ -455,6 +457,7 @@ OPTIMIZER_TRACE:
 ### group order distinct 优化
 #### group by
 * order by null： sql 仅有 group by 语句时， 默认按照 groug by 字段顺序进行排序。 在很多情况下 并不需要这个行为。 order by null 可以忽略排序
+
 ```sql
 explain
 SELECT 
@@ -490,7 +493,7 @@ limit 2000;
 1, SIMPLE, hr, range, index_hw_id_and_hr_id,index_homework_results_on_homework_id, index_hw_id_and_hr_id, 5, , 883, Using where; Using index; Using temporary
 1, SIMPLE, h, eq_ref, PRIMARY, PRIMARY, 4, saybot_vw.hr.homework_id, 1, 
 */
--- >>> 
+
 ```
 #### distinct 可以视为 group by 的一种特例， distinct 的优化参考 group by
 ### 子查询优化
