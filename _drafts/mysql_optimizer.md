@@ -14,7 +14,7 @@ https://confluence.alo7.cn/pages/viewpage.action?pageId=28345873
 
 ## 索引
 ### B+tree(以聚族索引clustered index来讲 ) 
-###### 图片依次盗自: https://www.geeksforgeeks.org/introduction-of-b-tree/ https://www.weypage.com/2019/09/15/mysql%E7%9A%84hash%E7%B4%A2%E5%BC%95%E5%92%8Cbree%E7%B4%A2%E5%BC%95%E5%8C%BA%E5%88%AB/
+###### 图片依次盗自: [图1](https://www.geeksforgeeks.org/introduction-of-b-tree/) [图2](https://www.weypage.com/2019/09/15/mysql%E7%9A%84hash%E7%B4%A2%E5%BC%95%E5%92%8Cbree%E7%B4%A2%E5%BC%95%E5%8C%BA%E5%88%AB/)
 
 ![https://www.geeksforgeeks.org/introduction-of-b-tree/](/assets/img/201909/btree1.jpg)
 ![https://www.weypage.com/2019/09/15/mysql%E7%9A%84hash%E7%B4%A2%E5%BC%95%E5%92%8Cbree%E7%B4%A2%E5%BC%95%E5%8C%BA%E5%88%AB](/assets/img/201909/btree2.png)
@@ -26,7 +26,7 @@ https://confluence.alo7.cn/pages/viewpage.action?pageId=28345873
 > 所以: 个人提议`能使用更小的数据类型就用更小的, 尤其是主键`, 而且当主键设置为bigint的表应该在早期就设计分表(该条不在规范里)
 
 ### Hash
-###### 图片依次盗自: https://stackoverflow.com/questions/29436034/hash-index-vs-inverted-index
+###### 图片依次盗自: [图1](https://stackoverflow.com/questions/29436034/hash-index-vs-inverted-index)
 
 ![https://www.geeksforgeeks.org/introduction-of-b-tree/](/assets/img/201909/hash_index.png)
 
@@ -131,10 +131,10 @@ SELECT * FROM INFORMATION_SCHEMA.OPTIMIZER_TRACE;
 ```
 
 ### Query Optimizer Hints:
-* SQL_NO_CACHE: 不适用缓存
+* SQL_NO_CACHE: 不使用缓存(另外从 mysql 8 起不再支持 query cache)
 * SQL_BUFFER_RESULT: 强制将结果先缓存至临时表, 再返回客户端.(在将大量数据发送至客户端时尽可能快的释放表锁)
 
-### range(以下均适用于btree, hash 限制不同):
+### range(以下均适用于btree, hash 限制略有不同):
 mysql中所有的条件最终都会被优化为`range`, 等值是range的一种特列.
 比如: `a=2` 会被解析为 `2 <= a <= 2`
 
@@ -213,6 +213,60 @@ WHERE
 -- 合并条件
 (keyword < 'DZ') 
 ```
+
+再举个例子:
+存在如下两个sql:
+```sql
+select count(*)
+from room m 
+where 
+  m.scheduled_time <= '2019-09-16 21:10:41.775'  
+    and DATE_ADD(m.scheduled_time, INTERVAL m.scheduled_duration + 15 MINUTE) > '2019-09-16 21:10:41.775' ;
+
+-- expalin 结果
+# id, select_type, table, partitions, type,  key,                                        key_len,ref, rows, filtered, Extra
+# 1,  SIMPLE,      m,               , range, idx_on_room_scheduled_time_and_expected_end_time, 5,   , 3157, 100.00,   Using index condition; Using where
+
+select count(*)
+from room m 
+where 
+  m.scheduled_time <= '2018-09-16 21:10:41.775'  
+    and m.scheduled_time > DATE_ADD('2018-09-16 21:10:41.775', INTERVAL -(50 + 15) MINUTE)  ;
+
+-- expalin 结果
+# id, select_type, table, partitions, type,  key,                                         key_len, ref, rows, filtered, Extra
+# 1,  SIMPLE,      m,               , range, idx_on_room_scheduled_time_and_expected_end_time, 5,     , 3   , 100.00, Using where; Using index
+
+-- 问题: 两个SQL都是用了 idx_on_room_scheduled_time_and_expected_end_time 索引, 而且 使用索引长度均为: key_len 但是 评估rows缺相差许多(3157 : 3)
+-- 原因: 前者range范围为: m.scheduled_time <= '2018-09-16 21:10:41.775' 
+--      后者range范围为: DATE_ADD('2018-09-16 21:10:41.775', INTERVAL -(50 + 15) MINUTE) < m.scheduled_time <= '2018-09-16 21:10:41.775'  
+-- 另外: 第一个语句explain中的 Using index condition 说明他用到了 Index Condition Pushdown(ICP) 优化.
+
+```
+
+针对第一个sql可能的优化方案如下:
+1. 如果我们能在(model层)配置中得到`scheduled_duration`的最大值那就能极快的改写成第二个语句; 
+2. 使用虚拟列(虚拟列最后介绍)
+3. 改写成如下的语句并补充scheduled_duration索引来达到同样效果
+
+```sql
+select SQL_NO_CACHE *
+from room m 
+where 
+  m.scheduled_time <= '2018-09-16 21:10:41.775'    
+    and m.scheduled_time >  DATE_ADD(
+      '2018-09-16 21:10:41.775'  , 
+      INTERVAL - (select max(scheduled_duration) from room) - 15 MINUTE) 
+
+-- 在scheduled_duration存在索引的情况下 explain  会如下表示:
+-- id, select_type, table, type,  key,                                              key_len, ref, rows, filtered, Extra
+-- 1	PRIMARY	      m		   range	idx_on_room_scheduled_time_and_expected_end_time	5		           3	  100.00	Using index condition; Using where
+-- 2	SUBQUERY										                                                                      Select tables optimized away
+-- 其中Select tables optimized away 表示读一次索引即可得到结果(min, max 等聚合函数优化)
+```
+
+
+> 反正`不要对索引列使用函数` `不要对索引列使用函数` `不要对索引列使用函数`
 
 #### Many-Valued Comparisons: index drive, index statistics
 * index drive： 依据索引进行精确评估
@@ -450,11 +504,60 @@ OPTIMIZER_TRACE:
 ```
 > 所以: `注意 in 条件个数不要过多`, 过多的in条件会使用 index stat 来生成执行计划, 如果数据分布不均, 会导致错误的选择Index
 
-### NULL 优化
-### IN 优化
-### index merge
-### 函数调用优化
-### group order distinct 优化
+<hr />
+
+> 下面这些优化都是特例优化. 在设计时不应该过多考虑.
+
+<hr />
+
+### NULL 优化:
+官方建议如果可能尽可能声明列为NOT NULL; 如果有需求使用NULL值, 请尽情使用. 
+[文档地址](https://dev.mysql.com/doc/refman/5.7/en/data-size.html)
+> 所以建议: `尽可能减少 NULL 列`, NULL 会增加索引扫描和条件对比的复杂度
+
+### Index Merge:
+在特定情况下一个表可以使用多个索引. 依次介绍每一种方式
+couse表存在 idx(category_id), pk(id)
+
+* Index Merge Intersection Access Algorithm:
+对多个索引同时扫描并对结果取交集
+
+```sql
+select * from course where category_id = 10 and id < 10;
+-- explain
+# id, select_type, table, type,          key,                    key_len, rows, Extra
+# 1, SIMPLE,       course, index_merge,  category_id_idx,PRIMARY, 9,4, ,  1,    Using intersect(category_id_idx,PRIMARY); Using where
+```
+> 另外如果发生了这种优化, 建议使用符合索引. 具体参考[文档](https://www.percona.com/blog/2009/09/19/multi-column-indexes-vs-index-merge/)
+
+* Index Merge Union Access Algorithm:
+对多个索引同时扫描并对结果取并集
+
+```sql
+select * from course where category_id = 10 or id < 10;
+-- explain
+# id, select_type, table, type,          key,                    key_len, rows, Extra
+# 1, SIMPLE,       course, index_merge,  category_id_idx,PRIMARY, 5,4, ,  12,   Using union(category_id_idx,PRIMARY); Using where
+```
+
+* Index Merge Sort-Union Access Algorithm
+对多个索引同时扫描并对结果取并集
+
+```sql
+select * from course where category_id < 10 or id < 10;
+-- explain
+# id, select_type, table, type,          key,                    key_len, rows, Extra
+# 1, SIMPLE,       course, index_merge,  category_id_idx,PRIMARY, 5,4, ,  12,   Using union(category_id_idx,PRIMARY); Using where
+
+-- 这个相比union: category_id < 10 只能使用到 category_id 这个一部分 , 而 category_id = 10 使用到 category_id, id 两个部分.
+```
+> 所以请仔细思考会进行range查询的列在索引中的位置
+
+
+### 子查询优化
+
+### 函数调用优化:
+### group/order/distinct 优化:
 #### group by
 * order by null： sql 仅有 group by 语句时， 默认按照 groug by 字段顺序进行排序。 在很多情况下 并不需要这个行为。 order by null 可以忽略排序
 
@@ -496,12 +599,15 @@ limit 2000;
 
 ```
 #### distinct 可以视为 group by 的一种特例， distinct 的优化参考 group by
-### 子查询优化
 
+### 5.7 新特性
+#### Generated Column
+
+
+## 未完成
+### 函数调用优化:
+### group/order/distinct 优化:
 ### 其他
 #### 必须有主键：聚簇索引（clustered index）
 #### 时区配置
 #### 字符编码
-
-### 5.7 新特性
-#### Generated Column
