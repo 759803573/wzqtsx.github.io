@@ -553,10 +553,81 @@ select * from course where category_id < 10 or id < 10;
 ```
 > 所以请仔细思考会进行range查询的列在索引中的位置
 
-
-### 子查询优化
-
 ### 函数调用优化:
+函数分为: 稳定(deterministic)非稳定(nondeterministic)两类函数.  非稳定函数会影响索引使用
+
+```sql
+select scheduled_time from room where scheduled_time > now() + INTERVAL 10 DAY;
+-- explain
+# id, select_type, table, type,   key,                                             key_len, ref, rows,   filtered, Extra
+# 1, SIMPLE,       room,  range,  idx_on_room_scheduled_time_and_expected_end_time, 5,         , 126263, 100.00,    Using where; Using index
+
+select scheduled_time from room where scheduled_time > now() + INTERVAL floor(rand()* 10) DAY;
+# id, select_type, table, type,  key,                                              key_len, ref, rows, filtered, Extra
+# 1,  SIMPLE,      room,  index, idx_on_room_scheduled_time_and_expected_end_time, 10, , 252527, 33.33, Using where; Using index
+
+-- 前者range 后者index
+```
+
+> 所以: 请注意 不稳定函数使用
+
+
+
+
+## 5.7 新特性
+### Generated Column
+[官网的例子](https://dev.mysql.com/doc/refman/5.7/en/create-table-secondary-indexes.html#json-column-indirect-index)
+
+```sql
+mysql> CREATE TABLE jemp (
+    ->     c JSON,
+    ->     g INT GENERATED ALWAYS AS (c->"$.id"),
+    ->     INDEX i (g)
+    -> );
+Query OK, 0 rows affected (0.28 sec)
+
+mysql> INSERT INTO jemp (c) VALUES
+     >   ('{"id": "1", "name": "Fred"}'), ('{"id": "2", "name": "Wilma"}'),
+     >   ('{"id": "3", "name": "Barney"}'), ('{"id": "4", "name": "Betty"}');
+Query OK, 4 rows affected (0.04 sec)
+Records: 4  Duplicates: 0  Warnings: 0
+
+mysql> SELECT c->>"$.name" AS name
+     >     FROM jemp WHERE g > 2;
++--------+
+| name   |
++--------+
+| Barney |
+| Betty  |
++--------+
+2 rows in set (0.00 sec)
+
+mysql> EXPLAIN SELECT c->>"$.name" AS name
+     >    FROM jemp WHERE g > 2\G
+*************************** 1. row ***************************
+           id: 1
+  select_type: SIMPLE
+        table: jemp
+   partitions: NULL
+         type: range
+possible_keys: i
+          key: i
+      key_len: 5
+          ref: NULL
+         rows: 2
+     filtered: 100.00
+        Extra: Using where
+1 row in set, 1 warning (0.00 sec)
+
+```
+<hr />
+
+
+## 未完成
+### 子查询优化
+### 其他
+#### 时区配置
+#### 字符编码
 ### group/order/distinct 优化:
 #### group by
 * order by null： sql 仅有 group by 语句时， 默认按照 groug by 字段顺序进行排序。 在很多情况下 并不需要这个行为。 order by null 可以忽略排序
@@ -600,14 +671,3 @@ limit 2000;
 ```
 #### distinct 可以视为 group by 的一种特例， distinct 的优化参考 group by
 
-### 5.7 新特性
-#### Generated Column
-
-
-## 未完成
-### 函数调用优化:
-### group/order/distinct 优化:
-### 其他
-#### 必须有主键：聚簇索引（clustered index）
-#### 时区配置
-#### 字符编码
