@@ -571,8 +571,79 @@ select scheduled_time from room where scheduled_time > now() + INTERVAL floor(ra
 
 > 所以: 请注意 不稳定函数使用
 
+### 子查询优化
 
+type| 优化类型| 备注
+-|-|-
+in/any|Semijoin
+|Materialization
+|EXISTS strategy
+not in|Materialization
+|EXISTS strategy
+derived table/views|Merge the derived table into the outer query block| 从5.7开始支持views的优化(下同) <br \>5.6,5.7虽然都叫这个名字但是行为相差很大
+|Materialize the derived table to an internal temporary table
 
+#### SemiJoin
+简单说: 两张表关系为1:n, 结果只需要1中的内容, n中的内容仅仅用来过滤.
+
+举个栗子:
+问: 查询存在学生的班级?
+
+```sql
+SELECT SQL_NO_CACHE
+ count(DISTINCT clazz.id)
+FROM
+    clazz
+        INNER JOIN
+    clazz_student ON clazz.id = clazz_id;
+
+-- 平均耗时1s
+```
+
+稍稍优化下:
+```sql
+SELECT SQL_NO_CACHE
+    COUNT(id)
+FROM
+    clazz c
+WHERE
+    exists  (SELECT 
+            1
+        FROM
+            clazz_student
+        WHERE
+            clazz_id = c.id);
+-- 平均耗时0.55s
+```
+
+由于 clazz 和 clazz_student 是 1:n 在优化下:
+
+```sql
+SELECT SQL_NO_CACHE
+    COUNT(id)
+FROM
+    clazz c
+WHERE
+    id IN (SELECT 
+            clazz_id
+        FROM
+            clazz_student
+        WHERE
+            clazz_id = c.id)
+;
+-- 平均耗时0.45s (单个查询优化了 55%)
+
+-- explain后看下show warnings
+/* select#1 */ 
+select 
+  sql_no_cache count(`saybot_vw`.`c`.`id`) AS `COUNT(id)` 
+from 
+  `saybot_vw`.`clazz` `c` 
+    semi join                       // first match
+  (`saybot_vw`.`clazz_student`)     // 子查询上拉
+where (`saybot_vw`.`clazz_student`.`clazz_id` = `saybot_vw`.`c`.`id`)
+
+```
 
 ## 5.7 新特性
 ### Generated Column
@@ -624,7 +695,7 @@ possible_keys: i
 
 
 ## 未完成
-### 子查询优化
+
 ### 其他
 #### 时区配置
 #### 字符编码
