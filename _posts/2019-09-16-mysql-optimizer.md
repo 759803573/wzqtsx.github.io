@@ -748,10 +748,6 @@ SELECT t1.*, t2.f1
   * UNION
   * .....
 
-
-## MYSQL 规范 文档地址: 
-https://confluence.alo7.cn/pages/viewpage.action?pageId=28345873
-
 ## 索引
 ### B+tree (以clustered index来讲) 
 ###### 图片依次盗自: [图1](https://www.geeksforgeeks.org/introduction-of-b-tree/) [图2](https://www.weypage.com/2019/09/15/mysql%E7%9A%84hash%E7%B4%A2%E5%BC%95%E5%92%8Cbree%E7%B4%A2%E5%BC%95%E5%8C%BA%E5%88%AB/)
