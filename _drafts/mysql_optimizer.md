@@ -691,14 +691,17 @@ possible_keys: i
 1 row in set, 1 warning (0.00 sec)
 
 ```
+
 <hr />
 
+<hr />
 
 ## 未完成
 
 ### 其他
 #### 时区配置
 #### 字符编码
+#### use index vs rs sorted key
 ### group/order/distinct 优化:
 #### group by
 * order by null： sql 仅有 group by 语句时， 默认按照 groug by 字段顺序进行排序。 在很多情况下 并不需要这个行为。 order by null 可以忽略排序
