@@ -1,37 +1,15 @@
 ---
 layout: post
-title: 'ALo7 MySQL 规范部分解读'
+title: 'MySQL 为什么要这样优化'
 date: 2019-09-16
 author: Calvin Wang
 cover: '/assets/img/201909/mysql-optimizer-cover.jpeg'
 tags: mysql optimizer
 ---
 
-> Alo7分享. 主要介绍 SQL 优化部分
+> Alo7 分享. 解释规范中的内容, 以为为什么要这样做.(写的总比说的少) 
 
-## MYSQL 规范 文档地址: 
-https://confluence.alo7.cn/pages/viewpage.action?pageId=28345873
-
-## 索引
-### B+tree (以clustered index来讲) 
-###### 图片依次盗自: [图1](https://www.geeksforgeeks.org/introduction-of-b-tree/) [图2](https://www.weypage.com/2019/09/15/mysql%E7%9A%84hash%E7%B4%A2%E5%BC%95%E5%92%8Cbree%E7%B4%A2%E5%BC%95%E5%8C%BA%E5%88%AB/)
-
-![https://www.geeksforgeeks.org/introduction-of-b-tree/](/assets/img/201909/btree1.jpg)
-![https://www.weypage.com/2019/09/15/mysql%E7%9A%84hash%E7%B4%A2%E5%BC%95%E5%92%8Cbree%E7%B4%A2%E5%BC%95%E5%8C%BA%E5%88%AB](/assets/img/201909/btree2.png)
-
-> 所以: 建议使用`自增列作为主键` 以减少索引分裂,重排的情况.
-
-> 另外 innodb 默认一个 index page 为16kb. 以int为主键的列单page可以放入记录: 4k; 以bigint为主键可以放入记录 2k (实际单page只能使用容量的[1/2-5/6])
-
-> 所以: 个人建议`能使用更小的数据类型就用更小的, 尤其是主键`, 而且当主键设置为bigint的表应该在早期就设计分表(该条不在规范里)
-
-### Hash
-###### 图片依次盗自: [图1](https://stackoverflow.com/questions/29436034/hash-index-vs-inverted-index)
-
-![https://www.geeksforgeeks.org/introduction-of-b-tree/](/assets/img/201909/hash_index.png)
-
-hash index 只能使用在memory engine(重启清空, 不支持事务, 只有表锁); hash index 擅长等值查询(=, <=>, ...); btree 支持 range 查询(>, >=, bwteen...) 
-
+###### 索引数据结构(放到最后防止开篇劝退.)
 ## SQL 调优
 ### 为什么要有索引：以 JOIN Algorithms 为例
 假设存在表： `School(id int, name char)` 和 `Clazz(id int, school_id int refer School)`
@@ -769,6 +747,30 @@ SELECT t1.*, t2.f1
   * Limit
   * UNION
   * .....
+
+
+## MYSQL 规范 文档地址: 
+https://confluence.alo7.cn/pages/viewpage.action?pageId=28345873
+
+## 索引
+### B+tree (以clustered index来讲) 
+###### 图片依次盗自: [图1](https://www.geeksforgeeks.org/introduction-of-b-tree/) [图2](https://www.weypage.com/2019/09/15/mysql%E7%9A%84hash%E7%B4%A2%E5%BC%95%E5%92%8Cbree%E7%B4%A2%E5%BC%95%E5%8C%BA%E5%88%AB/)
+
+![https://www.geeksforgeeks.org/introduction-of-b-tree/](/assets/img/201909/btree1.jpg)
+![https://www.weypage.com/2019/09/15/mysql%E7%9A%84hash%E7%B4%A2%E5%BC%95%E5%92%8Cbree%E7%B4%A2%E5%BC%95%E5%8C%BA%E5%88%AB](/assets/img/201909/btree2.png)
+
+> 所以: 建议使用`自增列作为主键` 以减少索引分裂,重排的情况.
+
+> 另外 innodb 默认一个 index page 为16kb. 以int为主键的列单page可以放入记录: 4k; 以bigint为主键可以放入记录 2k (实际单page只能使用容量的[1/2-5/6])
+
+> 所以: 个人建议`能使用更小的数据类型就用更小的, 尤其是主键`, 而且当主键设置为bigint的表应该在早期就设计分表(该条不在规范里)
+
+### Hash
+###### 图片依次盗自: [图1](https://stackoverflow.com/questions/29436034/hash-index-vs-inverted-index)
+
+![https://www.geeksforgeeks.org/introduction-of-b-tree/](/assets/img/201909/hash_index.png)
+
+hash index 只能使用在memory engine(重启清空, 不支持事务, 只有表锁); hash index 擅长等值查询(=, <=>, ...); btree 支持 range 查询(>, >=, bwteen...) 
 
 ## 推荐:
 * [数据库内核月报](http://mysql.taobao.org/monthly/)
