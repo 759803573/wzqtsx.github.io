@@ -13,7 +13,7 @@ tags: mysql optimizer
 https://confluence.alo7.cn/pages/viewpage.action?pageId=28345873
 
 ## 索引
-### B+tree(以聚族索引clustered index来讲 ) 
+### B+tree (以clustered index来讲) 
 ###### 图片依次盗自: [图1](https://www.geeksforgeeks.org/introduction-of-b-tree/) [图2](https://www.weypage.com/2019/09/15/mysql%E7%9A%84hash%E7%B4%A2%E5%BC%95%E5%92%8Cbree%E7%B4%A2%E5%BC%95%E5%8C%BA%E5%88%AB/)
 
 ![https://www.geeksforgeeks.org/introduction-of-b-tree/](/assets/img/201909/btree1.jpg)
@@ -23,7 +23,7 @@ https://confluence.alo7.cn/pages/viewpage.action?pageId=28345873
 
 > 另外 innodb 默认一个 index page 为16kb. 以int为主键的列单page可以放入记录: 4k; 以bigint为主键可以放入记录 2k (实际单page只能使用容量的[1/2-5/6])
 
-> 所以: 个人提议`能使用更小的数据类型就用更小的, 尤其是主键`, 而且当主键设置为bigint的表应该在早期就设计分表(该条不在规范里)
+> 所以: 个人建议`能使用更小的数据类型就用更小的, 尤其是主键`, 而且当主键设置为bigint的表应该在早期就设计分表(该条不在规范里)
 
 ### Hash
 ###### 图片依次盗自: [图1](https://stackoverflow.com/questions/29436034/hash-index-vs-inverted-index)
@@ -528,7 +528,7 @@ select * from course where category_id = 10 and id < 10;
 # id, select_type, table, type,          key,                    key_len, rows, Extra
 # 1, SIMPLE,       course, index_merge,  category_id_idx,PRIMARY, 9,4, ,  1,    Using intersect(category_id_idx,PRIMARY); Using where
 ```
-> 另外如果发生了这种优化, 建议使用符合索引. 具体参考[文档](https://www.percona.com/blog/2009/09/19/multi-column-indexes-vs-index-merge/)
+> 另外如果发生了这种优化, 建议使用复合索引. 具体参考[文档](https://www.percona.com/blog/2009/09/19/multi-column-indexes-vs-index-merge/)
 
 * Index Merge Union Access Algorithm:
 对多个索引同时扫描并对结果取并集
@@ -600,7 +600,7 @@ FROM
 -- 平均耗时1s
 ```
 
-稍稍优化下:
+稍稍优化下(5.7 及以下):
 ```sql
 SELECT SQL_NO_CACHE
     COUNT(id)
@@ -644,6 +644,62 @@ from
 where (`saybot_vw`.`clazz_student`.`clazz_id` = `saybot_vw`.`c`.`id`)
 
 ```
+
+子查询另外的策略:
+
+```sql
+-- looseScan
+SELECT SQL_NO_CACHE
+    COUNT(id)
+FROM
+    clazz_course cu
+WHERE
+    clazz_id IN (SELECT 
+            clazz_id
+        FROM
+            clazz_student
+        WHERE
+            clazz_id < 20);
+/*
+table,          rows, extra
+clazz_student,  1   , Using where; Using index; LooseScan
+c,           ,  1,    Using index
+
+解释:
+1. 遍历 cs 中每一组, 注意是组取到 cls_id
+2. 去 cls 表取 数据.
+
+与 firstmatch 的区别: 前者 是 cls 表为驱动表, 和改过程相反
+*/
+
+
+-- duplicate weedout
+SELECT SQL_NO_CACHE
+    COUNT(id)
+FROM
+    clazz c
+WHERE
+    id IN (SELECT 
+            clazz_id
+        FROM
+            clazz_student
+        WHERE
+            clazz_id = c.id and id < 100);
+
+/*
+table,          rows, extra
+clazz_student,  1   , Using where; Start temporary
+c,           ,  1,    Using index; End temporary
+
+解释:
+1. 创建临时表 T 
+2. 遍历 cls_stu 中没一行
+3. 取到 C 中的记录
+4. 临时表去重
+*/
+```
+
+
 
 ## 5.7 新特性
 ### Generated Column
@@ -691,6 +747,11 @@ possible_keys: i
 1 row in set, 1 warning (0.00 sec)
 
 ```
+
+## 推荐:
+* [数据库内核月报](http://mysql.taobao.org/monthly/)
+* [digoal/blog: Everything about database,bussiness.(Most for PostgreSQL).](https://github.com/digoal/blog)
+* [MySQL 官方文档](https://dev.mysql.com/doc/refman/8.0/en/)
 
 <hr />
 
