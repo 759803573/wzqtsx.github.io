@@ -409,9 +409,9 @@ func (c configBuilder) loadServers(fallbackNamespace string, svc v1alpha1.LoadBa
 }
 ```
 
-### 结论
+### #5. 结论
 
 至此就了解到了 对于单个 svc traefik 是通过获取 endpoints 来行使 lb 功能.(仅支持RoundRobin算法)
 
-### 后续
+### #6. 后续
 如果有兴趣可以去看下traefik 的启动过程. 来看看是不是就如推测那样调用了 Provider.Provide 方法. 这一篇到这里结束.
