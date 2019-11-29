@@ -15,7 +15,7 @@ tags: Kubernete Ingress Controller traefik
 其中默认情况下: 
 kube-proxy 会将收到的请求随机分配到一个健康的 Pod 上去. 在一定程度上就在承担着 load balance 的角色.
 许多开源的Edge Router(如 traefik, ambassador等)本身是支持 load balance 的, 在和 k8s 进行整合时配置的后端(上游)一般为 service.
-在这种情况下 edge router(IngressController) 和 service 都`可以`发挥 load balance 作用. 这其中究竟是那个服务再起作用, 这是要分析的问题.
+在这种情况下 edge router(IngressController) 和 service 都可以发挥 load balance 作用. 这其中究竟是那个服务再起作用, 这是要分析的问题.
 
 ### #2. 提出假设:
 * IngressController 没有发挥 lb 作用, 仅仅将请求透传给 Service 处理.
@@ -30,7 +30,7 @@ kube-proxy 会将收到的请求随机分配到一个健康的 Pod 上去. 在�
 ### #4. 分析(原码按需大幅删减)
 > 本人也没有 api-server/k8s-client 的实际编写经验, 下文会写如何从零去理解项目源码(欢迎交流源码阅读方式).
 
-#### 首先实现 k8s 扩展有多种方式, 先确定项目实现方式. 打开 `go.mod`
+#### 首先实现 k8s 扩展有多种方式, 先确定项目实现方式. 打开 go.mod
 
 ```bash
 # go.mod
@@ -39,7 +39,7 @@ k8s.io/apimachinery v0.0.0-20190612205821-1799e75a0719
 k8s.io/client-go v0.0.0-20190718183610-8e956561bbf5
 k8s.io/code-generator v0.0.0-20190612205613-18da4a14b22b
 ```
-基于此可以了解到项目通过`k8s.io/code-generator` ([github](https://github.com/kubernetes/code-generator))生成自定义资源的访问代码.
+基于此可以了解到项目通过k8s.io/code-generator ([github](https://github.com/kubernetes/code-generator))生成自定义资源的访问代码.
 
 #### 查看 Makefile 来获取代码生成脚本:
 
@@ -85,7 +85,7 @@ type Provider interface {
 ```
 
 文档注释中明确说明用来进行配置发现. 
-以及定义了了两个方法 `Init` 和 `Provide`, 虽然没有注释,可以裸猜 init 方法进行了初始化. Provide 提供服务.
+以及定义了了两个方法 Init 和 Provide, 虽然没有注释,可以裸猜 init 方法进行了初始化. Provide 提供服务.
 
 #### 在 /pkg/provider/kubernetes/crd 下查找 Provide 方法
 
@@ -102,7 +102,7 @@ pkg/provider/kubernetes/crd/kubernetes.go
 #### 分析 kubernetes.go 文件中的 Provide 方法.
 > 对于 Provider (struct) 内字段, 我一般是不会提前看的, 如果没有备注的话很难猜出作用, 并且分分钟就会忘记, 仅当函数中用到了才去看一下, 然后选择性记录一下(在 go 语言里尤其要记录 chan)
 
-先扫一眼 `Init` 方法, 以防在初始化中 hack 了内容.
+先扫一眼 Init 方法, 以防在初始化中 hack 了内容.
 
 ```go
 // pkg/provider/kubernetes/crd/kubernetes.go
@@ -114,7 +114,7 @@ func (p *Provider) Init() error {
 ```
 什么都没做, 开心
 
-查看 `Provide` 方法(代码经过精简):
+查看 Provide 方法(代码经过精简):
 
 ```go
 // pkg/provider/kubernetes/crd/kubernetes.go
@@ -155,7 +155,7 @@ func (p *Provider) Provide(configurationChan chan<- dynamic.Message, pool *safe.
 4. 封装成配置信息dynamic.Message,并通过loadConfigurationFromCRD传递给外部
 ```
 
-#### 先扫一眼`newK8sClient` 
+#### 先扫一眼 newK8sClient
 
 最后生成了一个clientWrapper 实例, 很简单可以简单扫一眼
 
@@ -194,7 +194,7 @@ func newInClusterClient(endpoint string) (*clientWrapper, error) {
 }
 ```
 
-#### 查看 `WatchAll` 函数
+#### 查看 WatchAll 函数
 
 ```go
 // pkg/provider/kubernetes/crd/client.go
@@ -243,9 +243,9 @@ func (reh *resourceEventHandler) OnDelete(obj interface{})  { reh.ev <- obj }
 ```
 
 至此可以了解到 k8sClient 会了解到会订阅 crd 资源变化, 并将变化事件放入 eventsChan 等到处理.
-结合上一步可以了解到 `loadConfigurationFromCRD` 是配置适配器, 也就是问题的关键点.
+结合上一步可以了解到 loadConfigurationFromCRD 是配置适配器, 也就是问题的关键点.
 
-#### 查看`loadConfigurationFromCRD`(只看 http route 的发现过程, 其他资源类似)
+#### 查看loadConfigurationFromCRD(只看 http route 的发现过程, 其他资源类似)
 
 ```go
 // pkg/provider/kubernetes/crd/kubernetes.go
