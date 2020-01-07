@@ -26,7 +26,7 @@ avatar: '/assets/img/avatar.jpg'
 search: true
 
 # Night mode
-nightMode: true
+nightMode: false
 
 # Comments 评论功能
 comments:
@@ -49,7 +49,7 @@ postPatterns: 'circuitBoard'
 # SNS settings 配置社交网站
 # url: email, weibo, zhihu, twitter, instagram, juejin, github, douban, facebook, dribble, uicn, jianshu, medium, linkedin
 sns:
-  email: 'mailto:sddbdw@163.com'
+  email: 'mailto:calvin.wang.3573@qq.com'
   weibo: '//weibo.com/u/2719836912'
   github: '//github.com/759803573'
 
