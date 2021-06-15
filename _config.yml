@@ -82,3 +82,6 @@ permalink: /:year/:month/:day/:title.html
 plugins: 
   - jekyll-paginate
   - jekyll-avatar
+
+# Google Analytics
+google_analytics: G-MYQJWPL1QZ
